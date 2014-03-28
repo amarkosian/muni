@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>muni</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width">
+        
+        <link rel="stylesheet" href="css/lib/bootstrap/css/bootstrap.min.css">
+        
+        <script type="text/javascript" src="js/lib/json2.js"></script>
+        <script type="text/javascript" src="js/lib/jquery-2.0.3.min.js"></script>
+        <script type="text/javascript" src="js/lib/underscore.js"></script>
+        <script type="text/javascript" src="js/lib/backbone.js"></script>
+        <script type="text/javascript" src="js/lib/bootstrap.min.js"></script>
+        <script type="text/javascript" src="js/lib/handlebars-v1.3.0.js"></script>
+        
+        <script type="text/javascript" src="app.js"></script>
+        <script type="text/javascript" src="facebook.js"></script>
+        
+    </head>
+    <body>
+        <div id="fb-root"></div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-10">
+                    <h1>muni</h1>
+                </div>
+                <div class="col-md-2">
+                    <input id="login-facebook" type="button" value="Facebook Login" class="form-control">
+                    <input id="save-prefs" type="button" value="Save Settings" class="form-control">
+                    
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <h2>controls</h2>
+                    <form role="form">
+                        <div id="routes" class="form-group">
+                            <label for="route-select">Routes</label>
+                            <select id="route-select" class="form-control"></select>
+                        </div>
+                        <div id="directions" class="form-group">
+                            <label for="direction-select">Direction</label>
+                            <select id="direction-select" class="form-control">
+                                <option value="Inbound">Inbound</option>
+                                <option value="Outbound">Outbound</option>
+                            </select>
+                        </div>
+                        <div id="stops" class="form-group">
+                            <label for="stop-select">Stops</label>
+                            <select id="stop-select" class="form-control"></select>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-8">
+                    <h2>results</h2>
+                    <input id="refresh" type="button" value="refresh">
+                    <ul id="prediction-list"></ul>
+                </div>
+            </div>
+        </div>
+                    
+    </body>
+</html>
