@@ -98,11 +98,12 @@ var user = null;
         parse: {
             routes: function(response) {
                 var routes = [];
-                $(response).find('route').each(function(index, elem) {
+                $(response).find('route').each(function() {
+                    var $elem = $(this);
                     routes.push({
-                        id: $(elem).attr('tag'),
-                        tag: $(elem).attr('tag'),
-                        title: $(elem).attr('title')
+                        id: $elem.attr('tag'),
+                        tag: $elem.attr('tag'),
+                        title: $elem.attr('title')
                     });
                 });
                 return routes;
@@ -111,26 +112,28 @@ var user = null;
                 var stops = [];
                 var validStops = [];
                 var direction = $('#direction-select').val();
-
-                $(response).find('direction').each(function(index, element) {
-                    if ($(element).attr('name') === direction) {
-                        $(element).find('stop').each(function(index, elem) {
-                            validStops.push($(elem).attr('tag'));
+                var $xml = $(response);
+                
+                $xml.find('direction').each(function() {
+                    var $elem = $(this);
+                    if ($elem.attr('name') === direction) {
+                        $elem.find('stop').each(function() {
+                            validStops.push($(this).attr('tag'));
                         });
                     }
                 });
 
-                $(response).find('stop').each(function(index, elem) {
-                    var $el = $(elem);
-
-                    if (typeof $el.attr('stopId') !== 'undefined' && validStops.indexOf($el.attr('tag')) > -1) {
+                $xml.find('stop').each(function() {
+                    var $elem = $(this);
+                    
+                    if (typeof $elem.attr('stopId') !== 'undefined' && validStops.indexOf($elem.attr('tag')) > -1) {
                         stops.push({
-                            id: $el.attr('tag'),
-                            tag: $el.attr('tag'),
-                            title: $el.attr('title'),
-                            lat: $el.attr('lat'),
-                            lon: $el.attr('lon'),
-                            stopId: $el.attr('stopId')
+                            id: $elem.attr('tag'),
+                            tag: $elem.attr('tag'),
+                            title: $elem.attr('title'),
+                            lat: $elem.attr('lat'),
+                            lon: $elem.attr('lon'),
+                            stopId: $elem.attr('stopId')
                         });
                     }
                 });
@@ -139,8 +142,8 @@ var user = null;
             predictions: function(response) {
                 var $xml = $(response);
                 var predictions = [];
-                $xml.find('prediction').each(function(index, elem) {
-                    var prediction = elem.attributes;
+                $xml.find('prediction').each(function() {
+                    var prediction = this.attributes;
                     var seconds = parseInt(prediction[1].value, 10);
                     predictions.push({
                         epochtime: prediction[0].value,
