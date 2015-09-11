@@ -3,8 +3,13 @@ var user = null;
 
 (function() {
     "use strict";
-    MuniApp = function() {
+    MuniApp = function(options) {
         var self = this;
+        this.params = {
+            route: null,
+            direction: null,
+            stop: null
+        };
         this.Route = Backbone.Model.extend({
             defaults: {
                 tag: '',
@@ -66,13 +71,14 @@ var user = null;
         });
         this.PredictionList = Backbone.Collection.extend({
             model: this.Prediction,
+            self: this,
             url: function() {
-                var route = $('#route-select').val();
-                var stop = $('#stop-select').val();
-                return 'http://webservices.nextbus.com/service/publicXMLFeed?command=predictions&a=sf-muni&r=' + route + '&s=' + stop + '&useShortTitles=true';
+                var params = this.self.params;
+                return 'http://webservices.nextbus.com/service/publicXMLFeed?command=predictions&a=sf-muni&r=' + params.route + '&s=' + params.stop + '&useShortTitles=true';
             },
             parse: self.xml.parse.predictions,
             fetch: self.xml.fetch
+
         });
         this.PredictionListView = Backbone.View.extend({
             template: Handlebars.compile(
@@ -84,6 +90,20 @@ var user = null;
                 $('#prediction-list').html(this.template(this.collection));
                 return this;
             }
+        });
+
+
+
+        this.URLRouter = Backbone.Router.extend({
+            routes: {
+                'route/:route/direction/:direction/stop/:stop': "showPredictions"
+            }
+            /*
+            ,
+            showPredictions: function(route, direction) {
+                console.log(route,direction);
+            }
+            */
         });
 
         return this;
@@ -175,6 +195,27 @@ $(document).ready(function() {
     var predictionList = new muni.PredictionList();
     var predictionListView = new muni.PredictionListView({collection: predictionList});
 
+    var appRouter = new muni.URLRouter();
+
+    appRouter.on('route:showPredictions', function(route, direction, stop) {
+        if (!routeListView.$el.find('select').length) {
+            routeList.fetch({
+                reset: true,
+                success: function() {
+                    routeListView.$el.find('select').val(route);
+                    console.log(routeListView.$el.find('select').val());
+                    console.log(route,direction,stop);
+                }
+            });
+        }
+        else {
+            routeListView.$el.find('select').val(route);
+            console.log(route,direction,stop);
+        }
+    });
+
+    Backbone.history.start();
+
     routeList.on('reset', function() {
         routeListView.render();
     });
@@ -186,9 +227,11 @@ $(document).ready(function() {
     });
 
     $('#route-select').on('change', function() {
+        muni.params.route = $(this).val();
         stopList.fetch({reset: true});
     });
     $('#direction-select').on('change', function() {
+        muni.params.direction = $(this).val();
         if (!$('#stop-select').val()) {
             stopList.fetch({reset: true});
         }
@@ -197,6 +240,7 @@ $(document).ready(function() {
         }
     });
     $('#stop-select').on('change', function() {
+        muni.params.stop = $(this).val();
         predictionList.fetch({reset: true});
     });
 
@@ -207,4 +251,5 @@ $(document).ready(function() {
     });
 
     routeList.fetch({reset: true});
+
 });
