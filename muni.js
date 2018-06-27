@@ -2,6 +2,7 @@
     var map;
     var stopMarkers = [];
     var vehicleMarkers = [];
+    var timer;
 
     function parseRoutes(response) {
         return $(response).find('route').map(function () {
@@ -137,6 +138,23 @@
         L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', tileOptions).addTo(map);
     }
 
+    function loadRoute(route) {
+        clearInterval(timer);
+        $.ajax({
+            url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=' + route,
+            success: function(response) {
+                clearMarkers(stopMarkers);
+                stopMarkers = parseStops(response).map(function(stop) {
+                    return stopMarker(stop);
+                });
+            }
+        });
+
+        updateVehicles(route);
+        timer = window.setInterval(function() {
+            updateVehicles(route);
+        }, 8000);
+    }
 
     $(document).ready(function(){
         var $routes = $('#routes');
@@ -153,7 +171,7 @@
             zoomDelta: 0.5,
             zoomSnap: 0.25
         };
-        var timer;
+
 
         createMap(mapboxAccessToken, mapOptions);
 
@@ -172,23 +190,7 @@
         });
 
         $routes.on('change', function() {
-            var route = $(this).val();
-
-            clearInterval(timer);
-            $.ajax({
-                url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=' + route,
-                success: function(response) {
-                    clearMarkers(stopMarkers);
-                    stopMarkers = parseStops(response).map(function(stop) {
-                        return stopMarker(stop);
-                    });
-                }
-            });
-
-            updateVehicles(route);
-            timer = window.setInterval(function() {
-                updateVehicles(route);
-            }, 8000);
+            loadRoute($(this).val());
         });
     });
 })(jQuery, L);
