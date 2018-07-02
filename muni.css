@@ -10,5 +10,10 @@ html, body, #map {
     margin-bottom: 0;
 }
 .routes {
+    align-items: center;
+    display: flex;
     z-index: 1000;
+}
+.routes select {
+    font-size: xx-large;
 }
