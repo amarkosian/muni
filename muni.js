@@ -156,10 +156,15 @@
         }, 8000);
     }
 
+    function getRouteFromUrl() {
+        var parts = window.location.href.split('#/');
+        return parts.length === 2 ? parts[1] : null;
+    }
+
     $(document).ready(function(){
         var $routes = $('#routes');
         var initialLocation = [37.76, -122.45];
-
+        var initialRoute = getRouteFromUrl();
         var mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
         var mapOptions = {
             center: initialLocation,
@@ -190,7 +195,13 @@
         });
 
         $routes.on('change', function() {
-            loadRoute($(this).val());
+            var route = $(this).val();
+            window.location.href = '/muni/#/' + route;
+            loadRoute(route);
         });
+
+        if (initialRoute) {
+            loadRoute(initialRoute);
+        }
     });
 })(jQuery, L);
