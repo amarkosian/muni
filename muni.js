@@ -201,7 +201,7 @@
         });
 
         if (initialRoute) {
-            loadRoute(initialRoute);
+            $routes.val(initialRoute);
         }
     });
 })(jQuery, L);
