@@ -1,4 +1,4 @@
-(function($, L){
+(function($, L, Navigo){
     var map;
     var stopMarkers = [];
     var vehicleMarkers = [];
@@ -164,7 +164,6 @@
     $(document).ready(function(){
         var $routes = $('#routes');
         var initialLocation = [37.76, -122.45];
-        var initialRoute = getRouteFromUrl();
         var mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
         var mapOptions = {
             center: initialLocation,
@@ -177,6 +176,10 @@
             zoomSnap: 0.25
         };
 
+        var root = '/muni';
+        var useHash = true;
+        var hash ='#';
+        var router = new Navigo(root, useHash, hash);
 
         createMap(mapboxAccessToken, mapOptions);
 
@@ -191,17 +194,22 @@
                 });
 
                 $routes.append($optgroup);
+
+                if (router) {
+                    $routes.val(router.lastRouteResolved().params.route);
+                }
+
             }
         });
-
-        $routes.on('change', function() {
-            var route = $(this).val();
-            window.location.href = '/muni/#/' + route;
-            loadRoute(route);
+        
+        $routes.on('change', function () {
+            router.navigate('/' + $(this).val());
         });
-
-        if (initialRoute) {
-            $routes.val(initialRoute);
-        }
+        
+        router.on('/:route', function (params) {
+            loadRoute(params.route);
+            $routes.val(params.route);
+        }).resolve();
+        
     });
-})(jQuery, L);
+})(jQuery, L, Navigo);
