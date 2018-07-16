@@ -207,8 +207,9 @@
         });
         
         router.on('/:route', function (params) {
-            loadRoute(params.route);
-            $routes.val(params.route);
+            var route = params.route.toUpperCase();
+            loadRoute(route);
+            $routes.val(route);
         }).resolve();
         
     });
