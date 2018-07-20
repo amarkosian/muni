@@ -60,8 +60,8 @@
             title: stop.title,
             icon: L.icon({
                 iconUrl: 'stop.png',
-                iconSize: [5,5],
-                iconAnchor: [2,2]
+                iconSize: [10,10],
+                iconAnchor: [5,5]
             })
         }).bindPopup('<div>' + stop.title + '</div>', {id: stop.id}).addTo(map);
     }
@@ -77,12 +77,13 @@
         var icon = vehicle.dirTag === 'I' ? 'inbound.png' : 'outbound.png';
         var marker = L.icon({
             iconUrl: icon,
-            iconSize:     [10, 10],
-            iconAnchor:   [5, 5]
+            iconSize:     [15,15],
+            iconAnchor:   [7,7]
         });
         return L.marker([vehicle.location.lat, vehicle.location.lon], {
             icon: marker,
-            title: vehicle.id
+            title: vehicle.id,
+            zIndexOffset: 1000
         }).bindPopup(vehiclePopup(vehicle), {id: 1234}).addTo(map);
     }
 
@@ -163,7 +164,7 @@
 
     $(document).ready(function(){
         var $routes = $('#routes');
-        var initialLocation = [37.76, -122.45];
+        var initialLocation = [37.74, -122.4498];
         var mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
         var mapOptions = {
             center: initialLocation,
@@ -171,7 +172,7 @@
             maxZoom: 18,
             minZoom: 12,
             preferCanvas: true,
-            zoom: 12.5,
+            zoom: 12.1,
             zoomDelta: 0.5,
             zoomSnap: 0.25
         };
