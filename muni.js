@@ -190,13 +190,15 @@
                 var routes = parseRoutes(response);
                 var $optgroup = $('<optgroup>');
 
+                $optgroup.append(makeOption('Select a route', ''));
+
                 routes.forEach(function(route) {
                     $optgroup.append(makeOption(route.title, route.tag));
                 });
 
                 $routes.append($optgroup);
 
-                if (router) {
+                if (router && router.lastRouteResolved()) {
                     $routes.val(router.lastRouteResolved().params.route);
                 }
 
