@@ -18,8 +18,6 @@ html, body {
     z-index: 1000;
 }
 .routes select {
-    background-color: orangered;
-    color: #f4f4f4;
     font-size: x-large;
     padding: 1px 5px;
     width: 100%;
