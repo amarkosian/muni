@@ -127,8 +127,17 @@
         });
     }
 
-    function createMap(mapboxAccessToken, options) {
+    function onLocationFound(e) {
+        var radius = e.accuracy / 2;
+        L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point").openPopup();
+        L.circle(e.latlng, radius).addTo(map);
+    }
 
+    function onLocationError(e) {
+        alert(e.message);
+    }
+
+    function createMap(mapboxAccessToken, options) {
         var tileOptions = {
             accessToken: mapboxAccessToken,
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
@@ -137,6 +146,10 @@
         map = L.map('map', options);
 
         L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', tileOptions).addTo(map);
+
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+        map.locate({setView : true});
     }
 
     function loadRoute(route) {
