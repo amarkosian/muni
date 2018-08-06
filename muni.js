@@ -136,7 +136,7 @@
             map.removeLayer(youAreHere);
         }
 
-        youAreHere = L.circle(e.latlng, radius);
+        youAreHere = L.circleMarker(e.latlng, radius);
         youAreHere.addTo(map);
     }
 
