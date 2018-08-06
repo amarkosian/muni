@@ -150,6 +150,9 @@
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
         map.locate({setView : true, maxZoom: 14});
+        window.setInterval(function() {
+            map.locate({setView : false});
+        }, 10000);
     }
 
     function loadRoute(route) {
