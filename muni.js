@@ -3,7 +3,7 @@
     var stopMarkers = [];
     var vehicleMarkers = [];
     var timer;
-    var youAreHere;
+    var youAreHere = null;
 
     function parseRoutes(response) {
         return $(response).find('route').map(function () {
@@ -131,6 +131,11 @@
     function onLocationFound(e) {
         var radius = e.accuracy / 2;
         //L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point");
+
+        if (youAreHere !=== null) {
+            map.removeLayer(youAreHere);
+        }
+
         youAreHere = L.circle(e.latlng, radius);
         youAreHere.addTo(map);
     }
