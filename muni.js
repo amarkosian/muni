@@ -129,14 +129,15 @@
     }
 
     function onLocationFound(e) {
-        var radius = e.accuracy / 2;
+        //var radius = e.accuracy / 2;
+        var radius = e.accuracy;
         //L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point");
 
         if (youAreHere !== null) {
             map.removeLayer(youAreHere);
         }
 
-        youAreHere = L.circle(e.latlng, {radius: radius, fill: true, fillOpacity: 0.5});
+        youAreHere = L.circle(e.latlng, {radius: radius, fill: true, fillOpacity: 0.75});
         youAreHere.addTo(map);
     }
 
