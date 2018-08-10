@@ -1,13 +1,15 @@
 (function($, L, Navigo){
-    var map;
-    var stopMarkers = [];
-    var vehicleMarkers = [];
-    var timer;
-    var youAreHere = null;
+    "use strict";
+
+    let map;
+    let stopMarkers = [];
+    let vehicleMarkers = [];
+    let timer;
+    let youAreHere = null;
 
     function parseRoutes(response) {
         return $(response).find('route').map(function () {
-            var $elem = $(this);
+            const $elem = $(this);
             return {
                 id: $elem.attr('tag'),
                 tag: $elem.attr('tag'),
@@ -17,12 +19,12 @@
     }
 
     function parseStops(response) {
-        var stops = [];
-        var validStops = [];
-        var $xml = $(response);
+        const stops = [];
+        const validStops = [];
+        const $xml = $(response);
 
         $xml.find('direction').each(function() {
-            var $direction = $(this);
+            const $direction = $(this);
 
             $direction.find('stop').each(function() {
                 validStops.push($(this).attr('tag'));
@@ -30,7 +32,7 @@
         });
 
         $xml.find('stop').each(function() {
-            var $elem = $(this);
+            const $elem = $(this);
 
             if (typeof $elem.attr('stopId') !== 'undefined' && validStops.indexOf($elem.attr('tag')) > -1) {
                 stops.push({
@@ -50,8 +52,8 @@
         return $('<option>').val(value).text(label);
     }
 
-    function getDirection(dirTag) {
-        var _dirTag = dirTag || '';
+    function getDirection(_dirTag) {
+        const dirTag = _dirTag || '';
         return dirTag.indexOf('_I_') > -1 ? 'I' : 'O';
     }
 
@@ -75,8 +77,8 @@
     }
 
     function vehicleMarker(vehicle) {
-        var icon = vehicle.dirTag === 'I' ? 'inbound.png' : 'outbound.png';
-        var marker = L.icon({
+        const icon = vehicle.dirTag === 'I' ? 'inbound.png' : 'outbound.png';
+        const marker = L.icon({
             iconUrl: icon,
             iconSize:     [15,15],
             iconAnchor:   [7,7]
@@ -89,10 +91,10 @@
     }
 
     function getVehicles(response) {
-        var $xml = $(response);
+        const $xml = $(response);
         return $xml.find('vehicle').map(function() {
-            var $this = $(this);
-            var directionTag = $this.attr('dirTag') || '';
+            const $this = $(this);
+            const directionTag = $this.attr('dirTag') || '';
             return {
                 id: $this.attr('id'),
                 dirTag: getDirection(directionTag),
@@ -130,7 +132,7 @@
 
     function onLocationFound(e) {
         //var radius = e.accuracy / 2;
-        var radius = e.accuracy;
+        const radius = e.accuracy;
         //L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point");
 
         if (youAreHere !== null) {
@@ -146,11 +148,11 @@
     }
 
     function createMap(mapboxAccessToken, options) {
-        var tileOptions = {
+        const tileOptions = {
             accessToken: mapboxAccessToken,
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
             id: 'mapbox.streets'
-        }
+        };
         map = L.map('map', options);
 
         L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', tileOptions).addTo(map);
@@ -181,16 +183,11 @@
         }, 9000);
     }
 
-    function getRouteFromUrl() {
-        var parts = window.location.href.split('#/');
-        return parts.length === 2 ? parts[1] : null;
-    }
-
     $(document).ready(function(){
-        var $routes = $('#routes');
-        var initialLocation = [37.74, -122.4498];
-        var mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
-        var mapOptions = {
+        const $routes = $('#routes');
+        const initialLocation = [37.74, -122.4498];
+        const mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
+        const mapOptions = {
             center: initialLocation,
             dragging: true,
             maxZoom: 18,
@@ -201,18 +198,18 @@
             zoomSnap: 0.25
         };
 
-        var root = '/muni';
-        var useHash = true;
-        var hash ='#';
-        var router = new Navigo(root, useHash, hash);
+        const root = '/muni';
+        const useHash = true;
+        const hash ='#';
+        const router = new Navigo(root, useHash, hash);
 
         createMap(mapboxAccessToken, mapOptions);
 
         $.ajax({
             url: 'data.php?command=routes',
             success: function(response) {
-                var routes = parseRoutes(response);
-                var $optgroup = $('<optgroup>');
+                const routes = parseRoutes(response);
+                const $optgroup = $('<optgroup label="routes">');
 
                 $optgroup.append(makeOption('Select a route', ''));
 
@@ -234,7 +231,7 @@
         });
         
         router.on('/:route', function (params) {
-            var route = params.route.toUpperCase();
+            const route = params.route.toUpperCase();
             loadRoute(route);
             $routes.val(route);
         }).resolve();
