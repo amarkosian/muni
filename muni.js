@@ -120,7 +120,7 @@
 
     function updateVehicles(route) {
         $.ajax({
-            url: 'data.php?command=vehicles&route=' + route,
+            url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=0&r=' + route,
             success: function(response) {
                 clearMarkers(vehicleMarkers);
                 vehicleMarkers = getVehicles(response).map(function (vehicle) {
@@ -168,10 +168,10 @@
     function loadRoute(route) {
         clearInterval(timer);
         $.ajax({
-            url: 'data.php?command=stops&route=' + route,
+            url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=' + route,
             success: function(response) {
                 clearMarkers(stopMarkers);
-                stopMarkers = response.map(function(stop) {
+                stopMarkers = parseStops(response).map(function(stop) {
                     return stopMarker(stop);
                 });
             }
@@ -180,7 +180,7 @@
         updateVehicles(route);
         timer = window.setInterval(function() {
             updateVehicles(route);
-        }, 9000);
+        }, 8000);
     }
 
     $(document).ready(function(){
@@ -204,28 +204,21 @@
         const router = new Navigo(root, useHash, hash);
 
         createMap(mapboxAccessToken, mapOptions);
-
+        
         $.ajax({
-            url: 'data.php?command=routes',
+            url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a=sf-muni',
             success: function(response) {
-                const routes = parseRoutes(response);
-                const $optgroup = $('<optgroup label="routes">');
-
-                $optgroup.append(makeOption('Select a route', ''));
+                var routes = parseRoutes(response);
+                var $optgroup = $('<optgroup>');
 
                 routes.forEach(function(route) {
                     $optgroup.append(makeOption(route.title, route.tag));
                 });
 
                 $routes.append($optgroup);
-
-                if (router && router.lastRouteResolved()) {
-                    $routes.val(router.lastRouteResolved().params.route);
-                }
-
             }
         });
-        
+
         $routes.on('change', function () {
             router.navigate('/' + $(this).val());
         });
