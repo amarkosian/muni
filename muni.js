@@ -144,7 +144,7 @@
     }
 
     function onLocationError(e) {
-        //alert(e.message);
+        alert(e.message);
     }
 
     function createMap(mapboxAccessToken, options) {
