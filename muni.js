@@ -174,6 +174,7 @@
         stopMarkers = response.map(function(stop) {
           return stopMarker(stop);
         });
+        document.title = route + " :: muni";
       }
     });
 
