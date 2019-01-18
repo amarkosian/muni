@@ -72,6 +72,7 @@
   function vehiclePopup(vehicle) {
     return '<div><h2>' + vehicle.routeTag + '</h2></div>'
       +  '<div><strong>Direction: </strong>' + (vehicle.dirTag === 'I' ? 'Inbound' : 'Outbound') + '</div>'
+      +  '<div><strong>ID: </strong>' + vehicle.id + '</div>'
       +  '<div><strong>Heading: </strong>' + vehicle.heading + '</div>'
       +  '<div><strong>Speed: </strong>' + vehicle.speedkmhr + '</div>';
   }
@@ -87,7 +88,7 @@
       icon: marker,
       title: vehicle.id,
       zIndexOffset: 1000
-    }).bindPopup(vehiclePopup(vehicle), {id: 1234}).addTo(map);
+    }).bindPopup(vehiclePopup(vehicle)).addTo(map);
   }
 
   function getVehicles(response) {
