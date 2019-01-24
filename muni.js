@@ -121,7 +121,7 @@
 
   function updateVehicles(route) {
     $.ajax({
-      url: 'data.php?command=vehicles&route=' + route,
+      url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=0&r=' + route,
       success: function(response) {
         clearMarkers(vehicleMarkers);
         vehicleMarkers = getVehicles(response).map(function (vehicle) {
@@ -169,10 +169,10 @@
   function loadRoute(route) {
     clearInterval(timer);
     $.ajax({
-      url: 'data.php?command=stops&route=' + route,
+      url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=' + route,
       success: function(response) {
         clearMarkers(stopMarkers);
-        stopMarkers = response.map(function(stop) {
+        stopMarkers = parseStops(response).map(function(stop) {
           return stopMarker(stop);
         });
         document.title = route + " :: muni";
@@ -208,7 +208,7 @@
     createMap(mapboxAccessToken, mapOptions);
 
     $.ajax({
-      url: 'data.php?command=routes',
+      url: 'http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a=sf-muni',
       success: function(response) {
         const routes = parseRoutes(response);
         const $optgroup = $('<optgroup label="routes">');
