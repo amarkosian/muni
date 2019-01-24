@@ -133,7 +133,7 @@
 
   function onLocationFound(e) {
     //var radius = e.accuracy / 2;
-    const radius = e.accuracy;
+    const radius = (e.accuracy > 50 && e.accuracy < 100) ? e.accuracy : 75;
     //L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point");
 
     if (youAreHere !== null) {
