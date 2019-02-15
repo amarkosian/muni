@@ -71,8 +71,8 @@
 
   function vehiclePopup(vehicle) {
     return '<div><h2>' + vehicle.routeTag + '</h2></div>'
+      +  '<h3>Vehicle ID: <em>' + vehicle.id + '</em></h3>'
       +  '<div><strong>Direction: </strong>' + (vehicle.dirTag === 'I' ? 'Inbound' : 'Outbound') + '</div>'
-      +  '<div><strong>ID: </strong>' + vehicle.id + '</div>'
       +  '<div><strong>Heading: </strong>' + vehicle.heading + '</div>'
       +  '<div><strong>Speed: </strong>' + vehicle.speedkmhr + '</div>';
   }

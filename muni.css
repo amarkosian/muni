@@ -19,6 +19,16 @@ html, body {
     margin-bottom: 0;
 }
 
+.leaflet-popup h3 {
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+.leaflet-popup h3 em {
+    color: darkred;
+    font-style: normal;
+}
+
 .routes {
     align-items: center;
     display: flex;
