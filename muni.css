@@ -7,8 +7,25 @@ html, body {
     height: 100%;
     width: 100vw;
 }
-.leaflet-popup h2 {
-    margin-bottom: 0;
+
+.leaflet-popup,
+.leaflet-popup h2,
+.leaflet-popup-content,
+.leaflet-popup-content-wrapper {
+    margin: 0;
+}
+.leaflet-popup.outbound,
+.leaflet-popup.outbound .leaflet-popup-content-wrapper {
+    color: black;
+    background-color: red;
+}
+.leaflet-popup.inbound,
+.leaflet-popup.inbound .leaflet-popup-content-wrapper {
+    color: white;
+    background-color: purple;
+}
+.leaflet-popup-tip-container {
+    display: none;
 }
 
 .routes {

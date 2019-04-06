@@ -70,24 +70,29 @@
     }
 
     function vehiclePopup(vehicle) {
-        return '<div><h2>' + vehicle.routeTag + '</h2></div>'
-            +  '<div><strong>Direction: </strong>' + (vehicle.dirTag === 'I' ? 'Inbound' : 'Outbound') + '</div>'
-            +  '<div><strong>Heading: </strong>' + vehicle.heading + '</div>'
-            +  '<div><strong>Speed: </strong>' + vehicle.speedkmhr + '</div>';
+        return '<strong>' + vehicle.routeTag + '</strong>';
     }
 
     function vehicleMarker(vehicle) {
         const icon = vehicle.dirTag === 'I' ? 'inbound.png' : 'outbound.png';
+        const vehicleClass = vehicle.dirTag === 'I' ? 'inbound' : 'outbound';
+        const popUpOptions = {
+            id: vehicle.id,
+            autoClose: false,
+            closeButton: false,
+            className: vehicle.dirTag === 'I' ? 'inbound' : 'outbound',
+            minWidth: 10
+        };
         const marker = L.icon({
-            iconUrl: icon,
-            iconSize:     [15,15],
-            iconAnchor:   [7,7]
+          iconUrl: icon,
+          iconSize:     [15,15],
+          iconAnchor:   [7,7]
         });
         return L.marker([vehicle.location.lat, vehicle.location.lon], {
             icon: marker,
             title: vehicle.id,
             zIndexOffset: 1000
-        }).bindPopup(vehiclePopup(vehicle), {id: 1234}).addTo(map);
+        }).bindPopup(vehiclePopup(vehicle), popUpOptions).addTo(map).openPopup() ;
     }
 
     function getVehicles(response) {
@@ -119,8 +124,10 @@
     }
 
     function updateVehicles(route) {
+        const proxyurl = "https://cors-anywhere.herokuapp.com/";
+        const url = "https://ersur.org/muni/data.php?command=vehicles&route=";
         $.ajax({
-            url: 'data.php?command=vehicles&route=' + route,
+            url: proxyurl + url + route,
             success: function(response) {
                 clearMarkers(vehicleMarkers);
                 vehicleMarkers = getVehicles(response).map(function (vehicle) {
@@ -147,6 +154,16 @@
         //alert(e.message);
     }
 
+    function locate() {
+        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ) {
+            map.locate({setView : true, maxZoom: 14});
+            window.setInterval(function() {
+                map.locate({setView : false});
+            }, 10000);
+        }
+       
+    }
+
     function createMap(mapboxAccessToken, options) {
         const tileOptions = {
             accessToken: mapboxAccessToken,
@@ -159,16 +176,15 @@
 
         map.on('locationfound', onLocationFound);
         map.on('locationerror', onLocationError);
-        map.locate({setView : true, maxZoom: 14});
-        window.setInterval(function() {
-            map.locate({setView : false});
-        }, 10000);
+        locate();
     }
 
     function loadRoute(route) {
+        const proxyurl = "https://cors-anywhere.herokuapp.com/";
+        const url = "https://ersur.org/muni/data.php?command=stops&route=";
         clearInterval(timer);
         $.ajax({
-            url: 'data.php?command=stops&route=' + route,
+            url: proxyurl + url + route,
             success: function(response) {
                 clearMarkers(stopMarkers);
                 stopMarkers = response.map(function(stop) {
@@ -180,7 +196,7 @@
         updateVehicles(route);
         timer = window.setInterval(function() {
             updateVehicles(route);
-        }, 9000);
+        }, 8000);
     }
 
     $(document).ready(function(){
@@ -205,8 +221,10 @@
 
         createMap(mapboxAccessToken, mapOptions);
 
+        const proxyurl = "https://cors-anywhere.herokuapp.com/";
+        const url = "https://ersur.org/muni/data.php?command=routes";
         $.ajax({
-            url: 'data.php?command=routes',
+            url: proxyurl + url,
             success: function(response) {
                 const routes = parseRoutes(response);
                 const $optgroup = $('<optgroup label="routes">');
