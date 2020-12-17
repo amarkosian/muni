@@ -148,15 +148,17 @@
     //alert(e.message);
   }
 
-  function createMap(mapboxAccessToken, options) {
-    const tileOptions = {
-      accessToken: mapboxAccessToken,
-      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-      id: 'mapbox.streets'
-    };
+  function createMap(options) {
     map = L.map('map', options);
 
-    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', tileOptions).addTo(map);
+    // add the OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 14,
+      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+    }).addTo(map);
+
+    // show the scale bar on the lower left corner
+    L.control.scale().addTo(map);
 
     map.on('locationfound', onLocationFound);
     map.on('locationerror', onLocationError);
@@ -188,7 +190,6 @@
   $(document).ready(function(){
     const $routes = $('#routes');
     const initialLocation = [37.74, -122.4498];
-    const mapboxAccessToken = 'pk.eyJ1IjoiYW1hcmtvc2lhbiIsImEiOiJXLUl2ZFhvIn0.6Z6e04EG9v5Y0LSnXnJz-g';
     const mapOptions = {
       center: initialLocation,
       dragging: true,
@@ -205,7 +206,7 @@
     const hash ='#';
     const router = new Navigo(root, useHash, hash);
 
-    createMap(mapboxAccessToken, mapOptions);
+    createMap(mapOptions);
 
     $.ajax({
       url: 'data.php?command=routes',
