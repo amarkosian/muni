@@ -153,7 +153,6 @@
 
     // add the OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 14,
       attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }).addTo(map);
 
@@ -195,7 +194,6 @@
       dragging: true,
       maxZoom: 18,
       minZoom: 12,
-      preferCanvas: true,
       zoom: 12.1,
       zoomDelta: 0.5,
       zoomSnap: 0.25
