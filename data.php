@@ -1,15 +1,15 @@
 <?php
 
 function routes() {
-    return file_get_contents('https://retro.umoiq.com/service/publicXMLFeed?command=routeList&a=sfmuni-sandbox');
+    return file_get_contents('https://retro.umoiq.com/service/publicXMLFeed?command=routeList&a=sf-muni');
 }
 
 function vehicles($route) {
-    return file_get_contents('https://retro.umoiq.com/service/publicXMLFeed?command=vehicleLocations&a=sfmuni-sandbox&t=0&r=' . $route);
+    return file_get_contents('https://retro.umoiq.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=0&r=' . $route);
 }
 
 function stops($route) {
-    $url = 'https://retro.umoiq.com/service/publicXMLFeed?command=routeConfig&a=sfmuni-sandbox&r=' . $route;
+    $url = 'https://retro.umoiq.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=' . $route;
     $xml = file_get_contents($url);
     $data = simplexml_load_string($xml);
     $stops = array();
