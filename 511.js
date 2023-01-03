@@ -6,6 +6,10 @@
     let vehicleMarkers = [];
     let timer;
     let youAreHere = null;
+    const root = '/muni';
+    const useHash = true;
+    const hash ='#';
+    const router = new Navigo(root, useHash, hash);
 
     function parseRoutes(response) {
         return $(response).find('route').map(function () {
@@ -18,34 +22,24 @@
         }).toArray();
     }
 
-    function parseStops(response) {
-        const stops = [];
-        const validStops = [];
-        const $xml = $(response);
-
-        $xml.find('direction').each(function() {
-            const $direction = $(this);
-
-            $direction.find('stop').each(function() {
-                validStops.push($(this).attr('tag'));
-            });
-        });
-
-        $xml.find('stop').each(function() {
-            const $elem = $(this);
-
-            if (typeof $elem.attr('stopId') !== 'undefined' && validStops.indexOf($elem.attr('tag')) > -1) {
-                stops.push({
-                    id: $elem.attr('tag'),
-                    tag: $elem.attr('tag'),
-                    title: $elem.attr('title'),
-                    lat: $elem.attr('lat'),
-                    lon: $elem.attr('lon'),
-                    stopId: $elem.attr('stopId')
-                });
+    function loadStops(data, route) {
+        if (data.hasOwnProperty('Contents') && data['Contents'].hasOwnProperty('dataObjects')) {
+            if (data['Contents']['dataObjects'].hasOwnProperty('ScheduledStopPoint')) {
+                clearMarkers(stopMarkers);
+                stopMarkers = data['Contents']['dataObjects']['ScheduledStopPoint'].map(function (stop) {
+                    const stopData = {
+                        id: route,
+                        tag: route,
+                        title: stop['Name'],
+                        lat: stop['Location']['Latitude'],
+                        lon: stop['Location']['Longitude'],
+                        stopId: stop['id']
+                    };
+                    return stopMarker(stopData);
+                })
             }
-        });
-        return stops;
+        }
+        return stopMarkers;
     }
 
     function makeOption(label, value) {
@@ -78,7 +72,6 @@
     }
 
     function vehicleMarker(vehicle) {
-        console.log(vehicle);
         const icon = vehicle.DirectionRef === 'IB' ? 'inbound.png' : 'outbound.png';
         const marker = L.icon({
             iconUrl: icon,
@@ -96,6 +89,8 @@
         const activity = data['Siri']['ServiceDelivery']['VehicleMonitoringDelivery']['VehicleActivity'];
         let routeVehicles = [];
 
+        clearInterval(timer);
+
         activity.forEach(function(vehicle) {
             if (vehicle.hasOwnProperty('MonitoredVehicleJourney')) {
                 if (vehicle.MonitoredVehicleJourney.hasOwnProperty('LineRef')) {
@@ -106,12 +101,18 @@
             }
         });
 
-        //console.log(routeVehicles);
         clearMarkers(vehicleMarkers);
         vehicleMarkers = routeVehicles.map(function (vehicle) {
             return vehicleMarker(vehicle, map);
         });
 
+        startVehicleTimer(lineID)
+    }
+
+    function startVehicleTimer(route) {
+        timer = window.setInterval(function() {
+            loadRoute(route);
+        }, 9000);
     }
 
     function clearMarkers(markers) {
@@ -160,16 +161,20 @@
     function loadRoute(route) {
         const url = 'https://api.511.org/transit/VehicleMonitoring?api_key=e4deb948-2e61-42d4-8b9b-6d3333cd60da&agency=SF&format=json';
 
-        clearInterval(timer);
-        // get stops in here
+        if (route) {
+            // get stops in here
+            fetch('https://api.511.org/transit/stops?api_key=e4deb948-2e61-42d4-8b9b-6d3333cd60da&operator_id=SF&line_id=' + route + '&format=json')
+                .then((response) => response.json())
+                .then((data) => loadStops(data, route));
+            //
 
-        fetch(url)
-            .then((response) => response.json())
-            .then((data) => getVehicles(data, route));
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => getVehicles(data, route));
+        }
     }
 
     function populateRoutes(data) {
-        console.log(data);
         const $optgroup = $('<optgroup label="routes">');
 
         $optgroup.append(makeOption('Select a route', ''));
@@ -206,46 +211,15 @@
             zoomSnap: 0.25
         };
 
-        const root = '/muni';
-        const useHash = true;
-        const hash ='#';
-        const router = new Navigo(root, useHash, hash);
-
         createMap(mapOptions);
 
         fetch('https://api.511.org/transit/lines?api_key=e4deb948-2e61-42d4-8b9b-6d3333cd60da&operator_id=SF&format=json')
             .then((response) => response.json())
             .then((data) => populateRoutes(data));
-        //
-
-
-        /*
-        $.ajax({
-            url: 'data.php?command=routes',
-            success: function(response) {
-                const routes = parseRoutes(response);
-                const $optgroup = $('<optgroup label="routes">');
-
-                $optgroup.append(makeOption('Select a route', ''));
-
-                routes.forEach(function(route) {
-                    $optgroup.append(makeOption(route.title, route.tag));
-                });
-
-                $routes.append($optgroup);
-
-                if (router && router.lastRouteResolved()) {
-                    $routes.val(router.lastRouteResolved().params.route);
-                }
-
-            }
-        });
-        */
 
         $routes.on('change', function () {
             router.navigate('/' + $(this).val());
         });
-
 
         router.on('/:route', function (params) {
             const route = params.route.toUpperCase();
