@@ -176,16 +176,11 @@
 
     function populateRoutes(data) {
         const $optgroup = $('<optgroup label="routes">');
+        const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
+        const sorted = data.sort((a, b) => collator.compare(a.Id, b.Id));
 
         $optgroup.append(makeOption('Select a route', ''));
-
-        data.sort(function(a, b) {
-            var textA = a.Id.toUpperCase();
-            var textB = b.Id.toUpperCase();
-            return (textA < textB) ? -1 : (textA > textB) ? 1 : 0;
-        });
-
-        data.forEach(function(route) {
+        sorted.forEach(function(route) {
             const title = route.Id + ' ' + route.Name;
             const value = route.Id;
             $optgroup.append(makeOption(title, value));
