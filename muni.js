@@ -1,241 +1,172 @@
-(function($, L, Navigo){
-  "use strict";
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Configuration ---
+    const API_KEY = 'e4deb948-2e61-42d4-8b9b-6d3333cd60da';
+    const AGENCY = 'SF';
+    const SF_LATITUDE = 37.7749;
+    const SF_LONGITUDE = -122.4194;
+    const MAP_ZOOM = 13;
 
-  let map;
-  let stopMarkers = [];
-  let vehicleMarkers = [];
-  let timer;
-  let youAreHere = null;
+    // --- UI Elements ---
+    const routeSelect = document.getElementById('route-select');
+    const loader = document.getElementById('loader');
 
-  function parseRoutes(response) {
-    return $(response).find('route').map(function () {
-      const $elem = $(this);
-      return {
-        id: $elem.attr('tag'),
-        tag: $elem.attr('tag'),
-        title: $elem.attr('title')
-      };
-    }).toArray();
-  }
-
-  function parseStops(response) {
-    const stops = [];
-    const validStops = [];
-    const $xml = $(response);
-
-    $xml.find('direction').each(function() {
-      const $direction = $(this);
-
-      $direction.find('stop').each(function() {
-        validStops.push($(this).attr('tag'));
-      });
-    });
-
-    $xml.find('stop').each(function() {
-      const $elem = $(this);
-
-      if (typeof $elem.attr('stopId') !== 'undefined' && validStops.indexOf($elem.attr('tag')) > -1) {
-        stops.push({
-          id: $elem.attr('tag'),
-          tag: $elem.attr('tag'),
-          title: $elem.attr('title'),
-          lat: $elem.attr('lat'),
-          lon: $elem.attr('lon'),
-          stopId: $elem.attr('stopId')
-        });
-      }
-    });
-    return stops;
-  }
-
-  function makeOption(label, value) {
-    return $('<option>').val(value).text(label);
-  }
-
-  function getDirection(_dirTag) {
-    const dirTag = _dirTag || '';
-    return dirTag.indexOf('_I_') > -1 ? 'I' : 'O';
-  }
-
-
-  function stopMarker(stop) {
-    return L.marker([stop.lat, stop.lon], {
-      title: stop.title,
-      icon: L.icon({
-        iconUrl: 'stop.png',
-        iconSize: [10,10],
-        iconAnchor: [5,5]
-      })
-    }).bindPopup('<div>' + stop.title + '</div>', {id: stop.id}).addTo(map);
-  }
-
-  function vehiclePopup(vehicle) {
-    return '<div><h2>' + vehicle.routeTag + '</h2></div>'
-      +  '<h3>Vehicle ID: <em>' + vehicle.id + '</em></h3>'
-      +  '<div><strong>Direction: </strong>' + (vehicle.dirTag === 'I' ? 'Inbound' : 'Outbound') + '</div>'
-      +  '<div><strong>Heading: </strong>' + vehicle.heading + '</div>'
-      +  '<div><strong>Speed: </strong>' + vehicle.speedkmhr + '</div>';
-  }
-
-  function vehicleMarker(vehicle) {
-    const icon = vehicle.dirTag === 'I' ? 'inbound.png' : 'outbound.png';
-    const marker = L.icon({
-      iconUrl: icon,
-      iconSize:     [15,15],
-      iconAnchor:   [7,7]
-    });
-    return L.marker([vehicle.location.lat, vehicle.location.lon], {
-      icon: marker,
-      title: vehicle.id,
-      zIndexOffset: 1000
-    }).bindPopup(vehiclePopup(vehicle)).addTo(map);
-  }
-
-  function getVehicles(response) {
-    const $xml = $(response);
-    return $xml.find('vehicle').map(function() {
-      const $this = $(this);
-      const directionTag = $this.attr('dirTag') || '';
-      return {
-        id: $this.attr('id'),
-        dirTag: getDirection(directionTag),
-        heading: $this.attr('heading'),
-        location: {
-          lat: $this.attr('lat'),
-          lon: $this.attr('lon')
-        },
-        predictble: $this.attr('predictable'),
-        routeTag: $this.attr('routeTag'),
-        secssincereport: $this.attr('secsSinceReport'),
-        speedkmhr: $this.attr('speedKmHr')
-      }
-    }).toArray();
-  }
-
-  function clearMarkers(markers) {
-    markers.forEach(function(marker){
-      map.removeLayer(marker);
-    });
-    markers.length = 0;
-  }
-
-  function updateVehicles(route) {
-    $.ajax({
-      url: 'data.php?command=vehicles&route=' + route,
-      success: function(response) {
-        clearMarkers(vehicleMarkers);
-        vehicleMarkers = getVehicles(response).map(function (vehicle) {
-          return vehicleMarker(vehicle, map);
-        });
-      }
-    });
-  }
-
-  function onLocationFound(e) {
-    //var radius = e.accuracy / 2;
-    const radius = (e.accuracy > 50 && e.accuracy < 100) ? e.accuracy : 75;
-    //L.marker(e.latlng).addTo(map).bindPopup("You are within " + radius + " meters from this point");
-
-    if (youAreHere !== null) {
-      map.removeLayer(youAreHere);
-    }
-
-    youAreHere = L.circle(e.latlng, {radius: radius, fill: true, fillOpacity: 0.75});
-    youAreHere.addTo(map);
-  }
-
-  function onLocationError(e) {
-    //alert(e.message);
-  }
-
-  function createMap(options) {
-    map = L.map('map', options);
-
-    // add the OpenStreetMap tiles
+    // --- Map Initialization ---
+    const map = L.map('map').setView([SF_LATITUDE, SF_LONGITUDE], MAP_ZOOM);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // show the scale bar on the lower left corner
-    L.control.scale().addTo(map);
+    // --- Map Layers ---
+    let stopLayer = L.layerGroup().addTo(map);
+    let vehicleLayer = L.layerGroup().addTo(map);
 
-    map.on('locationfound', onLocationFound);
-    map.on('locationerror', onLocationError);
-    map.locate({setView : true, maxZoom: 14});
-    window.setInterval(function() {
-      map.locate({setView : false});
-    }, 10000);
-  }
-
-  function loadRoute(route) {
-    clearInterval(timer);
-    $.ajax({
-      url: 'data.php?command=stops&route=' + route,
-      success: function(response) {
-        clearMarkers(stopMarkers);
-        stopMarkers = response.map(function(stop) {
-          return stopMarker(stop);
-        });
-        document.title = route + " :: muni";
-      }
-    });
-
-    updateVehicles(route);
-    timer = window.setInterval(function() {
-      updateVehicles(route);
-    }, 9000);
-  }
-
-  $(document).ready(function(){
-    const $routes = $('#routes');
-    const initialLocation = [37.74, -122.4498];
-    const mapOptions = {
-      center: initialLocation,
-      dragging: true,
-      maxZoom: 18,
-      minZoom: 12,
-      zoom: 12.1,
-      zoomDelta: 0.5,
-      zoomSnap: 0.25
+    // --- Helper Functions ---
+    const toggleLoader = (show) => {
+        loader.style.display = show ? 'block' : 'none';
     };
 
-    const root = '/muni';
-    const useHash = true;
-    const hash ='#';
-    const router = new Navigo(root, useHash, hash);
+    // --- Core Application Logic ---
 
-    createMap(mapOptions);
+    /**
+     * Fetches all routes and populates the dropdown.
+     */
+    async function fetchRoutes() {
+        toggleLoader(true);
+        const url = `https://api.511.org/transit/lines?api_key=${API_KEY}&operator_id=${AGENCY}&format=json`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const routes = await response.json();
 
-    $.ajax({
-      url: 'data.php?command=routes',
-      success: function(response) {
-        const routes = parseRoutes(response);
-        const $optgroup = $('<optgroup label="routes">');
+            routes.sort((a, b) => {
+                const idA = a.Id.replace(/\D/g, '');
+                const idB = b.Id.replace(/\D/g, '');
+                if (idA.length && idB.length) {
+                    return parseInt(idA) - parseInt(idB);
+                }
+                return a.Id.localeCompare(b.Id);
+            });
 
-        $optgroup.append(makeOption('Select a route', ''));
-
-        routes.forEach(function(route) {
-          $optgroup.append(makeOption(route.title, route.tag));
-        });
-
-        $routes.append($optgroup);
-
-        if (router && router.lastRouteResolved()) {
-          $routes.val(router.lastRouteResolved().params.route);
+            routes.forEach(route => {
+                const option = new Option(`${route.Id} - ${route.Name}`, route.Id);
+                routeSelect.add(option);
+            });
+        } catch (error) {
+            console.error("Failed to fetch routes:", error);
+            alert("Could not load SFMTA routes. Please try again later.");
+        } finally {
+            toggleLoader(false);
         }
+    }
 
-      }
-    });
+    /**
+     * Clears map layers and fetches all new data for the selected route.
+     * @param {string} routeId The ID of the route to display.
+     */
+    async function updateMapForRoute(routeId) {
+        if (!routeId) return; // No route selected, do nothing.
 
-    $routes.on('change', function () {
-      router.navigate('/' + $(this).val());
-    });
+        toggleLoader(true);
 
-    router.on('/:route', function (params) {
-      const route = params.route.toUpperCase();
-      loadRoute(route);
-      $routes.val(route);
-    }).resolve();
+        // Fetch and display both stops and vehicles concurrently
+        await Promise.all([
+            fetchAndDisplayStops(routeId),
+            fetchAndDisplayVehicles(routeId)
+        ]);
 
-  });
-})(jQuery, L, Navigo);
+        toggleLoader(false);
+    }
+
+    /**
+     * Fetches and displays stops for a given route.
+     * @param {string} routeId - The ID of the selected route.
+     */
+    async function fetchAndDisplayStops(routeId) {
+        const url = `https://api.511.org/transit/stops?api_key=${API_KEY}&operator_id=${AGENCY}&line_id=${routeId}&format=json`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const stops = data.Contents?.dataObjects?.ScheduledStopPoint || [];
+
+            stops.forEach(stop => {
+                if (stop.Location?.Latitude && stop.Location?.Longitude) {
+                    L.circleMarker([stop.Location.Latitude, stop.Location.Longitude], {
+                        radius: 4, color: 'black', fillColor: 'black', fillOpacity: 1
+                    }).bindPopup(`<b>Stop:</b> ${stop.Name} (${stop.id})`).addTo(stopLayer);
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to fetch stops for route ${routeId}:`, error);
+        }
+    }
+
+    /**
+     * Fetches vehicle data and filters it for the selected route.
+     * @param {string} routeId - The ID of the selected route.
+     */
+    async function fetchAndDisplayVehicles(routeId) {
+        const url = `https://api.511.org/transit/VehicleMonitoring?api_key=${API_KEY}&agency=${AGENCY}&format=json`;
+        try {
+            // **FIX 1: Add cache-busting option to the fetch call**
+            const response = await fetch(url, { cache: 'no-cache' });
+            const data = await response.json();
+            const allVehicles = data.Siri?.ServiceDelivery?.VehicleMonitoringDelivery?.VehicleActivity || [];
+
+            const routeVehicles = allVehicles.filter(v => v.MonitoredVehicleJourney?.LineRef === routeId);
+
+            routeVehicles.forEach(vehicle => {
+                const journey = vehicle.MonitoredVehicleJourney;
+                if (journey.VehicleLocation?.Latitude && journey.VehicleLocation?.Longitude) {
+                    const color = journey.DirectionRef === 'IB' ? 'red' : '#a934e5';
+                    L.circleMarker([journey.VehicleLocation.Latitude, journey.VehicleLocation.Longitude], {
+                        radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
+                    }).bindPopup(`<b>Vehicle:</b> ${journey.VehicleRef}<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}`)
+                        .addTo(vehicleLayer);
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to fetch vehicles for route ${routeId}:`, error);
+        }
+    }
+
+    /**
+     * Handles the 'change' event from the route selection dropdown.
+     */
+    function handleRouteChange() {
+        const selectedRoute = routeSelect.value;
+        location.hash = selectedRoute || '';
+    }
+
+    /**
+     * Reads the route ID from the URL hash and updates the application state.
+     */
+    function processUrlHash() {
+        const routeId = location.hash.replace('#', '');
+
+        // **FIX 2: Clear layers here for an immediate visual response.**
+        stopLayer.clearLayers();
+        vehicleLayer.clearLayers();
+
+        if (routeSelect.querySelector(`option[value="${routeId}"]`)) {
+            routeSelect.value = routeId;
+            updateMapForRoute(routeId);
+        } else {
+            routeSelect.value = "";
+            // No need to call updateMapForRoute, as layers are already cleared.
+        }
+    }
+
+    /**
+     * Initializes the application.
+     */
+    async function init() {
+        await fetchRoutes();
+        processUrlHash();
+
+        routeSelect.addEventListener('change', handleRouteChange);
+        window.addEventListener('hashchange', processUrlHash);
+    }
+
+    // Start the application
+    init();
+});
