@@ -19,11 +19,137 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Map Layers ---
     let stopLayer = L.layerGroup().addTo(map);
     let vehicleLayer = L.layerGroup().addTo(map);
+    let userLocationLayer = L.layerGroup().addTo(map);
+
+    // --- Geolocation Variables ---
+    let userLocationMarker = null;
+    let watchId = null;
 
     // --- Helper Functions ---
     const toggleLoader = (show) => {
         loader.style.display = show ? 'block' : 'none';
     };
+
+    // --- Geolocation Functions ---
+
+    /**
+     * Initializes geolocation tracking for the user.
+     */
+    function initGeolocation() {
+        if (!navigator.geolocation) {
+            console.warn('Geolocation is not supported by this browser.');
+            return;
+        }
+
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000 // Cache position for 1 minute
+        };
+
+        // Get initial position
+        navigator.geolocation.getCurrentPosition(
+            updateUserLocation,
+            handleGeolocationError,
+            options
+        );
+
+        // Watch position changes
+        watchId = navigator.geolocation.watchPosition(
+            updateUserLocation,
+            handleGeolocationError,
+            options
+        );
+    }
+
+    /**
+     * Updates the user's location marker on the map.
+     * @param {GeolocationPosition} position - The user's current position.
+     */
+    function updateUserLocation(position) {
+        const { latitude, longitude, accuracy } = position.coords;
+
+        // Remove existing marker if it exists
+        if (userLocationMarker) {
+            userLocationLayer.removeLayer(userLocationMarker);
+        }
+
+        // Create blue dot for user location
+        userLocationMarker = L.circleMarker([latitude, longitude], {
+            radius: 8,
+            color: '#2196F3',
+            weight: 3,
+            fillColor: '#2196F3',
+            fillOpacity: 0.7
+        }).bindPopup(`
+            <b>Your Location</b><br>
+            Accuracy: ${Math.round(accuracy)} meters<br>
+            Lat: ${latitude.toFixed(6)}<br>
+            Lng: ${longitude.toFixed(6)}
+        `);
+
+        // Add accuracy circle if accuracy is reasonable (less than 1000m)
+        if (accuracy < 1000) {
+            const accuracyCircle = L.circle([latitude, longitude], {
+                radius: accuracy,
+                color: '#2196F3',
+                weight: 1,
+                fillColor: '#2196F3',
+                fillOpacity: 0.1
+            });
+
+            userLocationLayer.addLayer(accuracyCircle);
+        }
+
+        userLocationLayer.addLayer(userLocationMarker);
+
+        console.log(`User location updated: ${latitude}, ${longitude} (±${Math.round(accuracy)}m)`);
+    }
+
+    /**
+     * Handles geolocation errors.
+     * @param {GeolocationPositionError} error - The geolocation error.
+     */
+    function handleGeolocationError(error) {
+        let message;
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                message = "Location access denied by user.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                message = "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                message = "Location request timed out.";
+                break;
+            default:
+                message = "An unknown error occurred while retrieving location.";
+                break;
+        }
+        console.warn(`Geolocation error: ${message}`);
+    }
+
+    /**
+     * Centers the map on the user's current location.
+     */
+    function centerOnUserLocation() {
+        if (userLocationMarker) {
+            const latLng = userLocationMarker.getLatLng();
+            map.setView(latLng, 16);
+        } else {
+            console.warn('User location not available');
+        }
+    }
+
+    /**
+     * Cleans up geolocation watching when the page is unloaded.
+     */
+    function cleanupGeolocation() {
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
+    }
 
     // --- Core Application Logic ---
 
@@ -165,7 +291,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         routeSelect.addEventListener('change', handleRouteChange);
         window.addEventListener('hashchange', processUrlHash);
+
+        // Initialize geolocation
+        initGeolocation();
+
+        // Cleanup geolocation on page unload
+        window.addEventListener('beforeunload', cleanupGeolocation);
     }
+
+    // Expose functions globally for potential external use
+    window.centerOnUserLocation = centerOnUserLocation;
 
     // Start the application
     init();
