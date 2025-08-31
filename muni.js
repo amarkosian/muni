@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Geolocation Variables ---
     let userLocationMarker = null;
     let watchId = null;
+    let isInitialLocationSet = false;
 
     // --- Helper Functions ---
     const toggleLoader = (show) => {
@@ -68,6 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateUserLocation(position) {
         const { latitude, longitude, accuracy } = position.coords;
+
+        // Center the map on the user's location ONCE.
+        if (!isInitialLocationSet) {
+            map.setView([latitude, longitude], 16); // Use a closer zoom for user location
+            isInitialLocationSet = true;
+        }
 
         // Remove existing marker if it exists
         if (userLocationMarker) {
@@ -115,6 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (error.code) {
             case error.PERMISSION_DENIED:
                 message = "Location access denied by user.";
+                // Alert the user so they know why the map didn't center.
+                alert("Location access was denied. The map will remain centered on San Francisco.");
                 break;
             case error.POSITION_UNAVAILABLE:
                 message = "Location information is unavailable.";
