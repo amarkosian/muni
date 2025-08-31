@@ -10,13 +10,14 @@ body {
 header {
     display: flex;
     flex-direction: column;
-    gap: 20px; /* Adds space between the sections */
-
+    gap: 20px;
     padding: 15px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    z-index: 1001; /* Ensure header is above map controls */
+    z-index: 1001;
+    position: sticky;
+    top: 0;
 }
 .routes {
     width: 100%; /* Takes up full width */
