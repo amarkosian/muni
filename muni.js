@@ -76,10 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
             isInitialLocationSet = true;
         }
 
-        // Remove existing marker if it exists
-        if (userLocationMarker) {
-            userLocationLayer.removeLayer(userLocationMarker);
-        }
+        // This removes both the old marker and the old accuracy circle.
+        userLocationLayer.clearLayers();
 
         // Create blue dot for user location
         userLocationMarker = L.circleMarker([latitude, longitude], {
@@ -253,10 +251,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const journey = vehicle.MonitoredVehicleJourney;
                 if (journey.VehicleLocation?.Latitude && journey.VehicleLocation?.Longitude) {
                     const color = journey.DirectionRef === 'IB' ? 'red' : '#a934e5';
+                    let popUpHtml = `<b>Vehicle:</b> ${journey.VehicleRef}`
+                                        + `<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
+                                        + `<b>Destination:</b> ${journey.DestinationName}`;
                     L.circleMarker([journey.VehicleLocation.Latitude, journey.VehicleLocation.Longitude], {
                         radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
-                    }).bindPopup(`<b>Vehicle:</b> ${journey.VehicleRef}<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}`)
-                        .addTo(vehicleLayer);
+                    }).bindPopup(popUpHtml).addTo(vehicleLayer);
                 }
             });
         } catch (error) {
