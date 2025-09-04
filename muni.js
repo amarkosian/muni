@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const SF_LATITUDE = 37.7749;
     const SF_LONGITUDE = -122.4194;
     const MAP_ZOOM = 13;
+    const API_RATE_LIMIT_REQUESTS = 60;
+    const API_RATE_LIMIT_SECONDS = 3600;
+    const UPDATE_INTERVAL_MS = (API_RATE_LIMIT_SECONDS / API_RATE_LIMIT_REQUESTS) * 1000; // 60000ms or 60s
 
     // --- UI Elements ---
     const routeSelect = document.getElementById('route-select');
@@ -25,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let userLocationMarker = null;
     let watchId = null;
     let isInitialLocationSet = false;
+
+    // Variable to hold the ID of the update interval timer.
+    let vehicleUpdateInterval = null;
 
     // --- Helper Functions ---
     const toggleLoader = (show) => {
@@ -193,28 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Clears map layers and fetches all new data for the selected route.
-     * @param {string} routeId The ID of the route to display.
-     */
-    async function updateMapForRoute(routeId) {
-        if (!routeId) return; // No route selected, do nothing.
-
-        toggleLoader(true);
-
-        // Fetch and display both stops and vehicles concurrently
-        await Promise.all([
-            fetchAndDisplayStops(routeId),
-            fetchAndDisplayVehicles(routeId)
-        ]);
-
-        toggleLoader(false);
-    }
-
-    /**
      * Fetches and displays stops for a given route.
      * @param {string} routeId - The ID of the selected route.
      */
     async function fetchAndDisplayStops(routeId) {
+        // Removed the clearLayers() call from this function.
+        // The controlling function, processUrlHash, is now responsible for clearing the layer before this is called.
         const url = `https://api.511.org/transit/stops?api_key=${API_KEY}&operator_id=${AGENCY}&line_id=${routeId}&format=json`;
         try {
             const response = await fetch(url);
@@ -238,9 +228,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} routeId - The ID of the selected route.
      */
     async function fetchAndDisplayVehicles(routeId) {
+        // Clear previous vehicle markers before adding new ones for a clean update.
+        vehicleLayer.clearLayers();
+
         const url = `https://api.511.org/transit/VehicleMonitoring?api_key=${API_KEY}&agency=${AGENCY}&format=json`;
         try {
-            // **FIX 1: Add cache-busting option to the fetch call**
             const response = await fetch(url, { cache: 'no-cache' });
             const data = await response.json();
             const allVehicles = data.Siri?.ServiceDelivery?.VehicleMonitoringDelivery?.VehicleActivity || [];
@@ -252,8 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (journey.VehicleLocation?.Latitude && journey.VehicleLocation?.Longitude) {
                     const color = journey.DirectionRef === 'IB' ? 'red' : '#a934e5';
                     let popUpHtml = `<b>Vehicle:</b> ${journey.VehicleRef}`
-                                        + `<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
-                                        + `<b>Destination:</b> ${journey.DestinationName}`;
+                        + `<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
+                        + `<b>Destination:</b> ${journey.DestinationName}`;
                     L.circleMarker([journey.VehicleLocation.Latitude, journey.VehicleLocation.Longitude], {
                         radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
                     }).bindPopup(popUpHtml).addTo(vehicleLayer);
@@ -274,20 +266,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Reads the route ID from the URL hash and updates the application state.
+     * This function now manages the entire update cycle.
      */
-    function processUrlHash() {
+    async function processUrlHash() {
+        // Stop any previously running update interval to prevent multiple timers.
+        if (vehicleUpdateInterval) {
+            clearInterval(vehicleUpdateInterval);
+            vehicleUpdateInterval = null;
+        }
+
         const routeId = location.hash.replace('#', '');
 
-        // **FIX 2: Clear layers here for an immediate visual response.**
+        // Clear layers immediately for a snappy user experience.
         stopLayer.clearLayers();
         vehicleLayer.clearLayers();
 
-        if (routeSelect.querySelector(`option[value="${routeId}"]`)) {
+        // Check for `routeId` to ensure it's not an empty string.
+        if (routeId && routeSelect.querySelector(`option[value="${routeId}"]`)) {
             routeSelect.value = routeId;
-            updateMapForRoute(routeId);
+            toggleLoader(true);
+
+            // Perform the initial data load for both stops and vehicles.
+            await Promise.all([
+                fetchAndDisplayStops(routeId),
+                fetchAndDisplayVehicles(routeId)
+            ]);
+
+            // Start the continuous update interval for vehicles ONLY.
+            vehicleUpdateInterval = setInterval(() => {
+                console.log(`Updating vehicle locations for route ${routeId}...`);
+                fetchAndDisplayVehicles(routeId);
+            }, UPDATE_INTERVAL_MS);
+
+            toggleLoader(false);
+
         } else {
+            // No valid route is selected, so ensure the dropdown is reset.
             routeSelect.value = "";
-            // No need to call updateMapForRoute, as layers are already cleared.
         }
     }
 
