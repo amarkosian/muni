@@ -32,9 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Variable to hold the ID of the update interval timer.
     let vehicleUpdateInterval = null;
 
+    // A Map to store current vehicle markers by their ID.
+    const currentVehicleMarkers = new Map();
+
     // --- Helper Functions ---
     const toggleLoader = (show) => {
         loader.style.display = show ? 'block' : 'none';
+    };
+
+    const getDimmedColor = (originalColor) => {
+        // Simple logic: for red and purple, make them darker.
+        if (originalColor === 'red') return '#8B0000'; // Dark Red
+        if (originalColor === '#a934e5') return '#6a0a8e'; // Darker Purple
+        return '#808080'; // Default to grey if unknown
     };
 
     // --- Geolocation Functions ---
@@ -108,12 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fillColor: '#2196F3',
                 fillOpacity: 0.1
             });
-
             userLocationLayer.addLayer(accuracyCircle);
         }
 
         userLocationLayer.addLayer(userLocationMarker);
-
         console.log(`User location updated: ${latitude}, ${longitude} (±${Math.round(accuracy)}m)`);
     }
 
@@ -126,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (error.code) {
             case error.PERMISSION_DENIED:
                 message = "Location access denied by user.";
-                // Alert the user so they know why the map didn't center.
                 alert("Location access was denied. The map will remain centered on San Francisco.");
                 break;
             case error.POSITION_UNAVAILABLE:
@@ -203,8 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} routeId - The ID of the selected route.
      */
     async function fetchAndDisplayStops(routeId) {
-        // Removed the clearLayers() call from this function.
-        // The controlling function, processUrlHash, is now responsible for clearing the layer before this is called.
         const url = `https://api.511.org/transit/stops?api_key=${API_KEY}&operator_id=${AGENCY}&line_id=${routeId}&format=json`;
         try {
             const response = await fetch(url);
@@ -224,12 +229,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Fetches vehicle data and filters it for the selected route.
+     * Fetches vehicle data and filters it for the selected route,
+     * updating existing markers or adding new ones.
      * @param {string} routeId - The ID of the selected route.
      */
     async function fetchAndDisplayVehicles(routeId) {
-        // Clear previous vehicle markers before adding new ones for a clean update.
-        vehicleLayer.clearLayers();
+        const vehiclesToKeep = new Set();
+
+        // Iterate over current markers and dim them.
+        currentVehicleMarkers.forEach((marker, vehicleRef) => {
+            const currentStyle = marker.options;
+            marker.setStyle({
+                fillColor: getDimmedColor(currentStyle.fillColor),
+                color: getDimmedColor(currentStyle.color) // Dim the border too
+            });
+        });
 
         const url = `https://api.511.org/transit/VehicleMonitoring?api_key=${API_KEY}&agency=${AGENCY}&format=json`;
         try {
@@ -241,18 +255,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
             routeVehicles.forEach(vehicle => {
                 const journey = vehicle.MonitoredVehicleJourney;
-                if (journey.VehicleLocation?.Latitude && journey.VehicleLocation?.Longitude) {
+                const vehicleRef = journey.VehicleRef; // Unique ID for each vehicle
+                const newLat = journey.VehicleLocation?.Latitude;
+                const newLng = journey.VehicleLocation?.Longitude;
+
+                if (newLat && newLng) {
                     const color = journey.DirectionRef === 'IB' ? 'red' : '#a934e5';
                     let popUpHtml = `<b>Vehicle:</b> ${journey.VehicleRef}`
                         + `<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
                         + `<b>Destination:</b> ${journey.DestinationName}`;
-                    L.circleMarker([journey.VehicleLocation.Latitude, journey.VehicleLocation.Longitude], {
-                        radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
-                    }).bindPopup(popUpHtml).addTo(vehicleLayer);
+
+                    // Check if this vehicle already exists on the map
+                    if (currentVehicleMarkers.has(vehicleRef)) {
+                        const existingMarker = currentVehicleMarkers.get(vehicleRef);
+                        existingMarker.setLatLng([newLat, newLng]);
+                        existingMarker.setStyle({
+                            radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
+                        });
+                        existingMarker.bindPopup(popUpHtml);
+                    } else {
+                        // Create a new marker if it's a new vehicle
+                        const newMarker = L.circleMarker([newLat, newLng], {
+                            radius: 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9
+                        }).bindPopup(popUpHtml).addTo(vehicleLayer);
+                        currentVehicleMarkers.set(vehicleRef, newMarker);
+                    }
+                    vehiclesToKeep.add(vehicleRef); // Mark this vehicle as still active
                 }
             });
+
+            // Remove vehicles that are no longer present in the API response.
+            currentVehicleMarkers.forEach((marker, vehicleRef) => {
+                if (!vehiclesToKeep.has(vehicleRef)) {
+                    vehicleLayer.removeLayer(marker);
+                    currentVehicleMarkers.delete(vehicleRef);
+                }
+            });
+
         } catch (error) {
             console.error(`Failed to fetch vehicles for route ${routeId}:`, error);
+            // If the fetch fails, revert dimmed markers to their original color
+            currentVehicleMarkers.forEach((marker, vehicleRef) => {
+                const isPopupInbound = marker.getPopup().getContent().includes("Inbound");
+                const originalColor = isPopupInbound ? 'red' : '#a934e5';
+                marker.setStyle({
+                    fillColor: originalColor,
+                    color: 'white'
+                });
+            });
         }
     }
 
@@ -266,10 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Reads the route ID from the URL hash and updates the application state.
-     * This function now manages the entire update cycle.
      */
     async function processUrlHash() {
-        // Stop any previously running update interval to prevent multiple timers.
+        // Stop any previously running update interval.
         if (vehicleUpdateInterval) {
             clearInterval(vehicleUpdateInterval);
             vehicleUpdateInterval = null;
@@ -277,11 +326,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const routeId = location.hash.replace('#', '');
 
-        // Clear layers immediately for a snappy user experience.
+        // Clear all layers and current vehicle markers when changing routes.
         stopLayer.clearLayers();
         vehicleLayer.clearLayers();
+        currentVehicleMarkers.clear();
 
-        // Check for `routeId` to ensure it's not an empty string.
         if (routeId && routeSelect.querySelector(`option[value="${routeId}"]`)) {
             routeSelect.value = routeId;
             toggleLoader(true);
