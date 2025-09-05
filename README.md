@@ -1,1 +1,1 @@
-Real time SFMTA vehicle tracker. Use it here: https://amarkosian.github.io/muni/
+Real time SFMTA vehicle tracker. Try it here: https://amarkosian.github.io/muni/
