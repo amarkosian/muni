@@ -261,9 +261,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (newLat && newLng) {
                     const color = journey.DirectionRef === 'IB' ? 'red' : '#a934e5';
-                    let popUpHtml = `<b>Vehicle:</b> ${journey.VehicleRef}`
-                        + `<br><b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
-                        + `<b>Destination:</b> ${journey.DestinationName}`;
+                    let popUpHtml = `<b>Vehicle:</b> ${journey.VehicleRef}<br>`
+                        + `<b>Direction:</b> ${journey.DirectionRef === 'IB' ? 'Inbound' : 'Outbound'}<br>`
+                        + `<b>Destination:</b> ${journey.DestinationName}<br>`
+                        + `<b>Origin:</b> ${journey.OriginName}<br>`
+                        + `<b>Occupancy:</b> ${journey.Occupancy}<br>`
+                        // + `<b>InCongestion:</b> ${journey.InCongestion}<br>`
+                        // + `<b>Bearing:</b> ${journey.Bearing}<br>`
+                        // + `<b>DestinationRef:</b> ${journey.DestinationRef}<br>`
+                        // + `<b>FramedVehicleJourneyRef:</b> ${journey.FramedVehicleJourneyRef.DataFrameRef} ${journey.FramedVehicleJourneyRef.DatedVehicleJourneyRef}<br>`
+                        // + `<b>LineRef:</b> ${journey.LineRef}<br>`
+                        // + `<b>Monitored:</b> ${journey.Monitored}<br>`
+                        // + `<b>MonitoredCall:</b> ${journey.MonitoredCall}<br>`
+                        // + `<b>OnwardCalls:</b> ${journey.OnwardCalls}<br>`
+                        // + `<b>OperatorRef:</b> ${journey.OperatorRef}<br>`
+                        // + `<b>OriginRef:</b> ${journey.OriginRef}<br>`
+                        // + `<b>PublishedLineName:</b> ${journey.PublishedLineName}<br>`
+                        + `<b>VehicleLocation:</b> ${journey.VehicleLocation.Latitude}, ${journey.VehicleLocation.Longitude}`;
 
                     // Check if this vehicle already exists on the map
                     if (currentVehicleMarkers.has(vehicleRef)) {
