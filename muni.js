@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UI Elements ---
     const routeSelect = document.getElementById('route-select');
     const loader = document.getElementById('loader');
+    const refreshButton = document.getElementById('refresh');
 
     // --- Map Initialization ---
     const map = L.map('map').setView([SF_LATITUDE, SF_LONGITUDE], MAP_ZOOM);
@@ -266,17 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         + `<b>Destination:</b> ${journey.DestinationName}<br>`
                         + `<b>Origin:</b> ${journey.OriginName}<br>`
                         + `<b>Occupancy:</b> ${journey.Occupancy}<br>`
-                        // + `<b>InCongestion:</b> ${journey.InCongestion}<br>`
-                        // + `<b>Bearing:</b> ${journey.Bearing}<br>`
-                        // + `<b>DestinationRef:</b> ${journey.DestinationRef}<br>`
-                        // + `<b>FramedVehicleJourneyRef:</b> ${journey.FramedVehicleJourneyRef.DataFrameRef} ${journey.FramedVehicleJourneyRef.DatedVehicleJourneyRef}<br>`
-                        // + `<b>LineRef:</b> ${journey.LineRef}<br>`
-                        // + `<b>Monitored:</b> ${journey.Monitored}<br>`
-                        // + `<b>MonitoredCall:</b> ${journey.MonitoredCall}<br>`
-                        // + `<b>OnwardCalls:</b> ${journey.OnwardCalls}<br>`
-                        // + `<b>OperatorRef:</b> ${journey.OperatorRef}<br>`
-                        // + `<b>OriginRef:</b> ${journey.OriginRef}<br>`
-                        // + `<b>PublishedLineName:</b> ${journey.PublishedLineName}<br>`
                         + `<b>VehicleLocation:</b> ${journey.VehicleLocation.Latitude}, ${journey.VehicleLocation.Longitude}`;
 
                     // Check if this vehicle already exists on the map
@@ -329,6 +319,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Handles the 'click' event from the manual refresh button.
+     */
+    async function handleRefreshClick() {
+        const selectedRoute = routeSelect.value;
+        if (selectedRoute) {
+            console.log(`Manual refresh for route ${selectedRoute}...`);
+            toggleLoader(true);
+            try {
+                await fetchAndDisplayVehicles(selectedRoute);
+            } catch (error) {
+                console.error("Manual refresh failed:", error);
+                alert("Could not refresh vehicle locations. Please check your connection.");
+            } finally {
+                toggleLoader(false);
+            }
+        } else {
+            // Optional: Alert the user if they click refresh without a route selected.
+            alert("Please select a route to refresh.");
+        }
+    }
+
+    /**
      * Reads the route ID from the URL hash and updates the application state.
      */
     async function processUrlHash() {
@@ -378,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         routeSelect.addEventListener('change', handleRouteChange);
         window.addEventListener('hashchange', processUrlHash);
+        refreshButton.addEventListener('click', handleRefreshClick);
 
         // Initialize geolocation
         initGeolocation();

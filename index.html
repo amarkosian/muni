@@ -18,22 +18,33 @@
       <option value="">-- Please choose a route --</option>
     </select>
   </section>
-  <section class="key">
-    <div>
-      Inbound
-      <svg class="dot-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="10" r="8" fill="red" stroke="black" stroke-width="2"/>
-      </svg>
-      &uarr; &rarr;
-    </div>
-    <div>
-      Outbound
-      <svg class="dot-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="10" r="8" fill="#a934e5" stroke="black" stroke-width="2"/>
-      </svg>
-      &darr; &larr;
-    </div>
-  </section>
+  <div class="header-bottom-row">
+    <section class="key">
+      <div>
+        Inbound
+        <svg class="dot-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="8" fill="red" stroke="black" stroke-width="2"/>
+        </svg>
+        &uarr; &rarr;
+      </div>
+      <div>
+        Outbound
+        <svg class="dot-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="8" fill="#a934e5" stroke="black" stroke-width="2"/>
+        </svg>
+        &darr; &larr;
+      </div>
+    </section>
+    <section class="controls">
+      <button id="refresh" aria-label="Refresh vehicle locations">
+        <svg class="refresh-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 4v6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </section>
+  </div>
 </header>
 
 <main id="map-container">

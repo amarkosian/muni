@@ -22,10 +22,18 @@ header {
 .routes {
     width: 100%; /* Takes up full width */
 }
+.header-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 .key {
-    width: 100%; /* Takes up full width */
     display: flex;
     gap: 15px; /* Adds space between the Inbound and Outbound divs */
+}
+.controls {
+    display: flex;
+    gap: 15px;
 }
 .dot-icon {
     width: 12px;
@@ -48,6 +56,31 @@ label {
     border-radius: 5px;
     border: 1px solid #ccc;
     font-size: 1.5em;
+}
+#refresh {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 999px; /* Creates the pill shape */
+    padding: 8px 16px;
+    font-size: 0.8em;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; /* Aligns icon and text */
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+    transition: background-color 0.2s ease;
+}
+
+#refresh:hover,
+#refresh:focus {
+    background-color: #e0e0e0;
+    border-color: #bbb;
+}
+
+#refresh .refresh-icon {
+    width: 18px;
+    height: 18px;
 }
 #map-container {
     flex-grow: 1;
