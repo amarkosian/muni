@@ -45,6 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let watchId = null;
     // Ensures the map is centered on the user only once (initial lock)
     let isInitialLocationSet = false;
+    // Timestamp (ms since epoch) when we last received a valid user location update
+    let lastLocationTimestamp = 0;
+    // How long without an update before we consider the watch stale and try to re-init
+    const GEO_STALE_MS = 2 * 60 * 1000; // 2 minutes
+
+    // Periodic watchdog interval id for ensuring geolocation is active
+    let geolocationWatchdogInterval = null;
 
     // Timer and state for vehicle updates
     let vehicleUpdateInterval = null; // ID for setInterval that refreshes vehicle locations
@@ -87,25 +94,50 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Avoid starting multiple watches
+        if (watchId !== null) return;
+
         const options = {
             enableHighAccuracy: true,
             timeout: 10000,
             maximumAge: 60000 // Cache position for 1 minute
         };
 
-        // Get initial position (once) so we can center the map right away
-        navigator.geolocation.getCurrentPosition(
-            updateUserLocation,
-            handleGeolocationError,
-            options
-        );
+        const startWatch = () => {
+            try {
+                // Get initial position (once) so we can center the map right away
+                navigator.geolocation.getCurrentPosition(
+                    updateUserLocation,
+                    handleGeolocationError,
+                    options
+                );
 
-        // Continuously watch the user's position and update the map marker
-        watchId = navigator.geolocation.watchPosition(
-            updateUserLocation,
-            handleGeolocationError,
-            options
-        );
+                // Continuously watch the user's position and update the map marker
+                watchId = navigator.geolocation.watchPosition(
+                    updateUserLocation,
+                    handleGeolocationError,
+                    options
+                );
+                console.log('Geolocation watch started, id=', watchId);
+            } catch (err) {
+                console.warn('Failed to start geolocation watch:', err);
+            }
+        };
+
+        // Use Permissions API when available to avoid repeatedly prompting user
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' })
+                .then((perm) => {
+                    if (perm.state === 'denied') {
+                        console.warn('Geolocation permission is denied.');
+                        return;
+                    }
+                    startWatch();
+                })
+                .catch(() => startWatch());
+        } else {
+            startWatch();
+        }
     }
 
     /**
@@ -114,11 +146,23 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {GeolocationPosition} position
      */
     function updateUserLocation(position) {
-        const { latitude, longitude, accuracy } = position.coords;
+        // Defensive validation of position object
+        if (!position || !position.coords) return;
+        const lat = Number(position.coords.latitude);
+        const lng = Number(position.coords.longitude);
+        const accuracy = Number(position.coords.accuracy || 0);
+
+        if (!isFinite(lat) || !isFinite(lng)) {
+            console.warn('Received invalid geolocation coordinates, ignoring update.');
+            return;
+        }
+
+        // Update last seen timestamp so we can detect stale watches
+        lastLocationTimestamp = Date.now();
 
         // Center map only once on the user's location for better UX.
         if (!isInitialLocationSet) {
-            map.setView([latitude, longitude], 16); // closer zoom focused on the user
+            map.setView([lat, lng], 16); // closer zoom focused on the user
             isInitialLocationSet = true;
         }
 
@@ -126,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userLocationLayer.clearLayers();
 
         // Create a prominent circle marker for the user.
-        userLocationMarker = L.circleMarker([latitude, longitude], {
+        userLocationMarker = L.circleMarker([lat, lng], {
             radius: 8,
             color: '#2196F3',
             weight: 3,
@@ -135,13 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }).bindPopup(`
             <b>Your Location</b><br>
             Accuracy: ${Math.round(accuracy)} meters<br>
-            Lat: ${latitude.toFixed(6)}<br>
-            Lng: ${longitude.toFixed(6)}
+            Lat: ${lat.toFixed(6)}<br>
+            Lng: ${lng.toFixed(6)}
         `);
 
         // Add an accuracy circle when the reported accuracy is reasonable.
-        if (accuracy < 1000) {
-            const accuracyCircle = L.circle([latitude, longitude], {
+        if (isFinite(accuracy) && accuracy < 1000) {
+            const accuracyCircle = L.circle([lat, lng], {
                 radius: accuracy,
                 color: '#2196F3',
                 weight: 1,
@@ -152,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         userLocationLayer.addLayer(userLocationMarker);
-        console.log(`User location updated: ${latitude}, ${longitude} (±${Math.round(accuracy)}m)`);
+        console.log(`User location updated: ${lat}, ${lng} (±${Math.round(accuracy)}m)`);
     }
 
     /**
@@ -160,24 +204,28 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {GeolocationPositionError} error
      */
     function handleGeolocationError(error) {
-        let message;
+        // Use numeric codes for broader compatibility
         switch (error.code) {
-            case error.PERMISSION_DENIED:
-                message = "Location access denied by user.";
-                // Inform the user that the map will remain at the default center.
-                alert("Location access was denied. The map will remain centered on San Francisco.");
+            case 1: // PERMISSION_DENIED
+                console.warn('Location access denied by user.');
+                alert('Location access was denied. The map will remain centered on San Francisco.');
+                // Stop any existing watch and mark timestamp so ensure logic can re-init later
+                if (watchId !== null) {
+                    try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+                    watchId = null;
+                }
+                lastLocationTimestamp = 0;
                 break;
-            case error.POSITION_UNAVAILABLE:
-                message = "Location information is unavailable.";
+            case 2: // POSITION_UNAVAILABLE
+                console.warn('Location information is unavailable.');
                 break;
-            case error.TIMEOUT:
-                message = "Location request timed out.";
+            case 3: // TIMEOUT
+                console.warn('Location request timed out.');
                 break;
             default:
-                message = "An unknown error occurred while retrieving location.";
+                console.warn('An unknown error occurred while retrieving location.');
                 break;
         }
-        console.warn(`Geolocation error: ${message}`);
     }
 
     /**
@@ -199,10 +247,74 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function cleanupGeolocation() {
         if (watchId !== null) {
-            navigator.geolocation.clearWatch(watchId);
+            try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
             watchId = null;
         }
+        lastLocationTimestamp = 0;
+        // Clear watchdog if running
+        if (geolocationWatchdogInterval !== null) {
+            clearInterval(geolocationWatchdogInterval);
+            geolocationWatchdogInterval = null;
+        }
     }
+
+    // Try to re-init geolocation when the watch looks stale or was cleared
+    function ensureGeolocationActive() {
+        if (!navigator.geolocation) return;
+        // If we have a recent update, nothing to do
+        if (Date.now() - lastLocationTimestamp < GEO_STALE_MS) return;
+        // If a watch is already active, nothing to do
+        if (watchId !== null) return;
+
+        console.log('Geolocation appears stale or stopped; attempting to re-initialize.');
+        initGeolocation();
+    }
+
+    // Hook to restart geolocation on visibility/focus (helps when browser throttles background tabs)
+    // When the page becomes hidden/blurred or is unloaded, stop the geolocation watch so
+    // the app does not continue consuming battery or attempt updates while the user is away.
+    // When the page becomes visible/shown/focused again, attempt to restart the watch.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // Page moved to background: stop active geolocation to conserve battery
+            cleanupGeolocation();
+            console.log('Page hidden — geolocation stopped.');
+        } else {
+            // Page became visible again: try to re-initialize
+            ensureGeolocationActive();
+            // Restart watchdog if it was cleared while backgrounded
+            if (geolocationWatchdogInterval === null) {
+                geolocationWatchdogInterval = setInterval(ensureGeolocationActive, 30 * 1000);
+            }
+            console.log('Page visible — attempting to restart geolocation.');
+        }
+    });
+
+    // Some mobile browsers use pagehide/pageshow; handle those as well.
+    window.addEventListener('pagehide', () => {
+        cleanupGeolocation();
+        console.log('pagehide — geolocation stopped.');
+    });
+    window.addEventListener('pageshow', () => {
+        ensureGeolocationActive();
+        if (geolocationWatchdogInterval === null) {
+            geolocationWatchdogInterval = setInterval(ensureGeolocationActive, 30 * 1000);
+        }
+        console.log('pageshow — attempting to restart geolocation.');
+    });
+
+    // Also handle blur/focus for extra coverage (desktop browsers).
+    window.addEventListener('blur', () => {
+        cleanupGeolocation();
+        console.log('Window blur — geolocation stopped.');
+    });
+    window.addEventListener('focus', () => {
+        ensureGeolocationActive();
+        if (geolocationWatchdogInterval === null) {
+            geolocationWatchdogInterval = setInterval(ensureGeolocationActive, 30 * 1000);
+        }
+        console.log('Window focus — attempting to restart geolocation.');
+    });
 
     // --- Core Application Logic ---
 
@@ -215,7 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = `https://api.511.org/transit/lines?api_key=${API_KEY}&operator_id=${AGENCY}&format=json`;
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                console.error(`Failed to fetch routes: HTTP ${response.status}`);
+                alert("Could not load SFMTA routes. Please try again later.");
+                return;
+            }
             const routes = await response.json();
 
             // Sort by numeric part of the id when present, otherwise lexicographically.
@@ -456,6 +572,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Start geolocation tracking to show user position on the map
         initGeolocation();
+
+        // Watch for permission changes and re-init geolocation when granted
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                navigator.permissions.query({ name: 'geolocation' }).then((perm) => {
+                    // If permission status changes (e.g., user grants permission), try to ensure geolocation is active
+                    perm.onchange = () => {
+                        console.log('Geolocation permission changed to', perm.state);
+                        if (perm.state === 'granted') {
+                            ensureGeolocationActive();
+                        }
+                    };
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        // Start a small watchdog to re-init geolocation if updates stop (helps on some platforms)
+        geolocationWatchdogInterval = setInterval(ensureGeolocationActive, 30 * 1000);
 
         // Ensure geolocation watch is cleared when the user leaves the page
         window.addEventListener('beforeunload', cleanupGeolocation);
