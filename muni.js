@@ -358,6 +358,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Fetch arrival predictions for a specific stop and format them as HTML.
+     * @param {string} stopId - The ID of the stop (monitoringRef).
+     * @returns {Promise<string>} HTML content for the popup.
+     */
+    async function fetchStopPredictions(stopId) {
+        const url = `https://api.511.org/transit/stoptimetable?api_key=${API_KEY}&operatorref=${AGENCY}&monitoringref=${stopId}&format=json`;
+        try {
+            const response = await fetch(url, { cache: 'no-cache' });
+            if (!response.ok) {
+                console.error(`Prediction fetch failed for stop ${stopId}: HTTP ${response.status}`);
+                return 'Could not load arrival predictions.';
+            }
+            const data = await response.json();
+            const visits = data?.Siri?.ServiceDelivery?.StopTimetableDelivery?.TimetabledStopVisit;
+
+            if (!visits || visits.length === 0) {
+                return 'No upcoming arrivals scheduled.';
+            }
+
+            // Limit to a reasonable number of predictions
+            const maxPredictions = 5;
+            let predictionsHtml = '<b>Upcoming Arrivals:</b><ul style="list-style-type: none; padding-left: 0;">';
+
+            visits.slice(0, maxPredictions).forEach(visit => {
+                const journey = visit.TargetedVehicleJourney;
+                const call = journey.TargetedCall;
+                // ExpectedArrivalTime includes real-time data; AimedArrivalTime is scheduled. Prioritize expected.
+                const arrivalTimeStr = call.AimedArrivalTime;
+                if (!arrivalTimeStr) return;
+
+                const arrivalTime = new Date(arrivalTimeStr);
+                const now = new Date();
+                const minutesUntil = Math.round((arrivalTime - now) / (1000 * 60));
+
+                // Display relative time if it's soon, otherwise the absolute time.
+                let timeDisplay;
+                if (minutesUntil < 1) {
+                    timeDisplay = '<b>Now</b>';
+                } else if (minutesUntil <= 60) {
+                    timeDisplay = `<b>${minutesUntil} min</b>`;
+                } else {
+                    timeDisplay = arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+
+                const lineName = journey.LineRef;
+                const destination = journey.DestinationName;
+                predictionsHtml += `<li><b>${lineName}</b> to ${destination}: ${timeDisplay}</li>`;
+            });
+            predictionsHtml += '</ul>';
+            return predictionsHtml;
+
+        } catch (error) {
+            console.error(`Failed to parse or fetch predictions for stop ${stopId}:`, error);
+            return 'Error fetching arrival predictions.';
+        }
+    }
+
+    /**
      * Fetch and render stops for a specific route.
      * Stops are added as small black circle markers to the stopLayer.
      * @param {string} routeId
@@ -372,9 +430,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             stops.forEach(stop => {
                 if (stop.Location?.Latitude && stop.Location?.Longitude) {
-                    L.circleMarker([stop.Location.Latitude, stop.Location.Longitude], {
+                    const marker = L.circleMarker([stop.Location.Latitude, stop.Location.Longitude], {
                         radius: 4, color: 'black', fillColor: 'black', fillOpacity: 1
-                    }).bindPopup(`<b>Stop:</b> ${stop.Name} (${stop.id})`).addTo(stopLayer);
+                    }).addTo(stopLayer);
+
+                    // When a stop is clicked, open a popup and fetch arrival predictions.
+                    marker.on('click', async (e) => {
+                        const popup = L.popup()
+                            .setLatLng(e.latlng)
+                            .setContent(`<b>Stop:</b> ${stop.Name} (${stop.id})<br>Loading predictions...`)
+                            .openOn(map);
+
+                        try {
+                            const predictionsHtml = await fetchStopPredictions(stop.id);
+                            popup.setContent(`<b>Stop:</b> ${stop.Name} (${stop.id})<br>${predictionsHtml}`);
+                        } catch (err) {
+                            popup.setContent(`<b>Stop:</b> ${stop.Name} (${stop.id})<br>Could not load predictions.`);
+                            console.error('Error setting popup content:', err);
+                        }
+                    });
                 }
             });
         } catch (error) {
